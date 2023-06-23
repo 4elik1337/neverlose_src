@@ -1,3 +1,5 @@
+local inspect = require 'neverlose/inspect'
+
 local images do
      local M = {}
 
@@ -1286,13 +1288,17 @@ local ctx = new_class()
                     fade_time = 0
                 })
 
+                local spec_font = render.load_font('Calibri Bold', 22, 'a')
+
                 events['render']:set(function()
 
                     local lp = entity.get_local_player()
+                    local is_spectating = false
 
                     if lp == nil then return end
                     if lp.m_hObserverTarget and (lp.m_iObserverMode == 4 or lp.m_iObserverMode == 5) then
                         lp = lp.m_hObserverTarget
+                        is_spectating = true
                     end
 
                     player_data(0.1, {
@@ -1406,10 +1412,6 @@ local ctx = new_class()
                         if lp == nil then return end
                         if lp.m_hObserverTarget and (lp.m_iObserverMode == 4 or lp.m_iObserverMode == 5) then
                             lp = lp.m_hObserverTarget
-                        end
-
-                        if lp == nil then
-                            return
                         end
 
                         local active_weapon = lp:get_player_weapon();if not active_weapon then return end
@@ -1561,6 +1563,67 @@ local ctx = new_class()
                         end
                     end
 
+                    -- SPECTAING SHIT
+                    if is_spectating then
+
+                        local steam_avatar do
+                            steam_avatar = lp:get_steam_avatar()
+
+                            local w = 100
+                            render.texture(steam_avatar, vector(x/2.5 - w, y/1.25 - 20), vector(w, w))
+                        end
+
+                        local name do
+                            name = lp:get_name()
+
+                            local player_info = lp:get_player_info()
+
+                            if player_info.is_fake_player then
+                                name = 'BOT ' .. name
+                            end
+                        end
+
+                        render.gradient(vector(x/2.5, y/1.25), vector(x/1.6, y/1.25 + 80), color(0, 255), color(0, 0), color(0, 255), color(0, 0))
+                        render.rect(vector(x/2.5, y/1.25 + 40), vector(x/1.6, y/1.25 + 42), color(13, 230, 217) )
+
+                        render.text(spec_font, vector(x/2.44, y/1.25 + 10), color(), '', name)
+
+                        local additional_info do
+                            local rs = lp:get_resource()
+
+                            additional_info = {
+                                kills = rs.m_iKills,
+                                assists = rs.m_iAssists,
+                                deaths = rs.m_iDeaths,
+                                hs = rs.m_iMatchStats_HeadShotKills_Total
+                            }
+
+                            -- kills
+                            render.text(4, vector(x/2.44, y/1.25 + 44), color(), '', 'K')
+                            render.text(spec_font, vector(x/2.44 - 2, y/1.25 + 58), color(), '', additional_info.kills)
+
+                            --assists
+                            render.text(4, vector(x/2.34, y/1.25 + 44), color(), '', 'A')
+                            render.text(spec_font, vector(x/2.34 - 2, y/1.25 + 58), color(), '', additional_info.assists)
+
+                            --deaths
+                            render.text(4, vector(x/2.24, y/1.25 + 44), color(), '', 'D')
+                            render.text(spec_font, vector(x/2.24 - 2, y/1.25 + 58), color(), '', additional_info.deaths)
+
+                            -- k/d
+                            render.text(4, vector(x/2.1, y/1.25 + 44), color(), '', 'K/D')
+                            render.text(spec_font, vector(x/2.08 - 2, y/1.25 + 68), color(), 'c', math.clamp(additional_info.kills / additional_info.deaths, 0, additional_info.kills))
+
+                            -- AVG
+                            render.text(4, vector(x/2, y/1.25 + 44), color(), '', 'TOTAL DMG')
+                            render.text(spec_font, vector(x/1.95, y/1.25 + 68), color(), 'c', m_iMatchStats_Damage_Total or 0)
+
+                            -- HS RATE
+                            render.text(4, vector(x/1.85, y/1.25 + 44), color(), '', 'HS')
+                            render.text(spec_font, vector(x/1.84, y/1.25 + 68), color(), 'c', string.format('%s%%', math.abs(math.ceil(math.clamp(additional_info.hs/additional_info.kills*100, 0, 100)))))
+                        end
+                    end
+
                     -- ROUND Relaited SHIT
                     do
                         local game_rule = entity.get_game_rules()
@@ -1663,7 +1726,7 @@ end
 
 local native_Key_LookupBinding = vtable_bind("engine.dll", "VEngineClient014", 21, "const char* (__thiscall*)(void*, const char*)")
 local function get_key_binding(cmd)
-    return '' --ffi.string(native_Key_LookupBinding(cmd))
+    return ffi.string(native_Key_LookupBinding(cmd))
 end
 
 local chat_input_global = 'y'
